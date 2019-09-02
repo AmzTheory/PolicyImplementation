@@ -100,22 +100,21 @@ def partners(id):
 
     
 def grandParents(id):
-    maternalFam=getMaternalFamily(id)
-    paternalFam=getPaternalFamily(id)
-    gfmaternal=(list(maternalFam.select()))
-   ## gmmaternal=getPaternalFamily(id)
-    # print(maternalFam)
-    # if((maternalFam==None) or (paternalFam==None)):
-    #     print ("the passed individual does not have any grand parents")
-    # else:
-    print(gfmaternal)
-    # print(getIndividual(maternalFam.maternal).firstName)
-    # print(getIndividual(paternalFam.maternal).firstName)
-    # print(getIndividual(paternalFam.maternal).firstName)
-def firstDegree():
-    parents()
-    sibling()
-    children()
+    info=fam=getIndividualInfo(id)
+    maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
+    paternalFam=getPaternalFamily(id,info[1]) #Dad Family
+
+
+    print("maternal\n-------")
+    print(getIndividual(maternalFam.maternal).firstName)
+    print(getIndividual(maternalFam.paternal).firstName)
+    print("paternal\n-------")
+    print(getIndividual(paternalFam.maternal).firstName)
+    print(getIndividual(paternalFam.paternal).firstName)
+def firstDegree(id):
+    parents(id)
+    sibling(id)
+    children(id)
 
 def sisters():
     ind=Individual.get_by_id(id)
@@ -132,16 +131,45 @@ def brothers():
             print (i.firstName)
 def secondDegree():
     pass
-def uncles():
-    pass
-def maternalUncles():
-    pass
-def paternalUncles():
-    pass
-def maternalAunts():
-    pass
-def paternalAunts():
-    pass
+def uncles(id):
+    info=fam=getIndividualInfo(id)
+    maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
+    paternalFam=getPaternalFamily(id,info[1]) #Dad Family
+
+    dontPrint=info[0].familyId.paternal
+
+    printOnlyGender(maternalFam.children,"M",dontPrint)
+    printOnlyGender(paternalFam.children,"M",dontPrint)
+def maternalUncles(id):
+    info=fam=getIndividualInfo(id)
+    maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
+    printOnlyGender(maternalFam.children,"M",None)
+
+def paternalUncles(id):
+    info=fam=getIndividualInfo(id)
+    paternalFam=getPaternalFamily(id,info[1]) #DAD Family 
+    dontPrint=info[0].familyId.paternal
+    printOnlyGender(paternalFam.children,"M",dontPrint)
+
+def aunts(id):
+    info=fam=getIndividualInfo(id)
+    maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
+    paternalFam=getPaternalFamily(id,info[1]) #Dad Family
+    
+    dontPrint=info[0].familyId.maternal
+
+    printOnlyGender(maternalFam.children,"F",dontPrint)
+    printOnlyGender(paternalFam.children,"F",dontPrint)
+def maternalAunts(id):
+    info=fam=getIndividualInfo(id)
+    maternalFam=getMaternalFamily(id,info[1]) #Mom Family  
+
+    dontPrint=info[0].familyId.maternal
+    printOnlyGender(maternalFam.children,"F",dontPrint)
+def paternalAunts(id):
+    info=fam=getIndividualInfo(id)
+    paternalFam=getPaternalFamily(id,info[1]) #Mom Family  
+    printOnlyGender(paternalFam.children,"F",None)
 
   
 
@@ -149,8 +177,8 @@ def paternalAunts():
 def getIndividualInfo(id):
         # try:
             ind=Individual.get_by_id(id)
-            return [ind,Family.get_by_id(ind.familyId)]
-        # except:
+            return [ind,Family.get(Family.id==ind.familyId)]
+        #) except:
         #     print("Unexpected error:", sys.exc_info())
         #     return [ind,None]
 
@@ -161,24 +189,27 @@ def getIndividual(id):
 def getFamiliesForIndividual(id):
     return Family.select().where((Family.paternal==id) | (Family.maternal==id))
 
-def getMaternalFamily(id):
-    fam=getIndividualInfo(id)[1]
+    
 
+def getMaternalFamily(id,fam):
     if (fam!=None):
-        return fam.maternalInFamilies 
+        return Family.get(Family.id==fam.maternalFamily.id)
 
     return None
 
-def getPaternalFamily(id):
-    fam=getIndividualInfo(id)[1]
-    print()
+def getPaternalFamily(id,fam):
     if (fam!=None):
-        return fam.paternalInFamilies 
+        return Family.get(Family.id==fam.paternalFamily.id)
     
     return None
   
 
+def printOnlyGender(list,g,dontPrint):  #list of individuals
+    for c in list:
+        if(c.gender==g and c!=dontPrint):##if see is NONE this would produce a bug
+            print(c.firstName)
 
+           
 def compare(resources):
 # algorithm used for compare function
 # -fetch all relevent policies based on the queried resources

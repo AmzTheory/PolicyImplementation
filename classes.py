@@ -18,16 +18,15 @@ class BaseModel(Model):
         database=db
 
 
-class Individual(BaseModel):
-       pass
+
 
 class Family(BaseModel):
      id=AutoField()
      maternalFamily=ForeignKeyField('self',null=True,backref="maternalFam")
      paternalFamily=ForeignKeyField('self',null=True,backref="paternalFam")
      root=BooleanField()
-     paternal=ForeignKeyField(Individual,null=True,backref="paternalInFamilies")
-     maternal=ForeignKeyField(Individual,null=True,backref="maternalInFamilies")
+     paternal=DeferredForeignKey('Individual',null=True,backref="paternalInFamilies")
+     maternal=DeferredForeignKey('Individual',null=True,backref="maternalInFamilies")
 
 class Individual(BaseModel):
      id = AutoField()
@@ -126,6 +125,9 @@ class Access:
                      print("Unexpected error:", sys.exc_info())
                      db.close()
                      print ("close2")
+
+      
+
 
 
         
