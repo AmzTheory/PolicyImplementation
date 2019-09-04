@@ -39,17 +39,7 @@ class Individual(BaseModel):
 
 
 
-def performMigration():
-       field = ForeignKeyField(Individual, field=Individual.id, null=True)
-       paternal=ForeignKeyField(Individual,null=True,backref="paternalInFamilies")
-       maternal=ForeignKeyField(Individual,null=True,backref="maternalInFamilies")
-       migrator=SqliteMigrator(db)
-       migrate(
-              # migrator.drop_column('family',"maternal"),
-              # migrator.drop_column('family',"paternal")
-              migrator.add_column('family',"maternal",field),
-              migrator.add_column('family',"paternal",field)
-       )
+
 class Children(BaseModel):
      familyId=ForeignKeyField(Family,backref="Fam")
      childID=ForeignKeyField(Individual,backref="Children")
@@ -77,14 +67,32 @@ class Relation(BaseModel):
        name=TextField()
 
 
+
+
+
+
 class Rule(BaseModel):
       id=AutoField()
       type=CharField()
       anon=BooleanField(null=True)
       instead=TextField()#json
       condition=TextField() #json
-      relation=ForeignKeyField(Relation,backref="relationrules")
+      relation=TextField() #json
       policyId=ForeignKeyField(Policy,backref="rules")
+
+
+def performMigration():
+       field = ForeignKeyField(Individual, field=Individual.id, null=True)
+       paternal=ForeignKeyField(Individual,null=True,backref="paternalInFamilies")
+       maternal=ForeignKeyField(Individual,null=True,backref="maternalInFamilies")
+
+       relation=TextField()
+
+       migrator=SqliteMigrator(db)
+       migrate(
+              migrator.drop_column('rule',"relation_id"),
+              migrator.add_column('rule',"relation",relation)
+       )
 
 
 
@@ -107,6 +115,12 @@ class Instead(BaseModel):
        relationId=ForeignKeyField(Relation,backref="rules")
 
 
+class SharedPeople():
+    def __init__(self,individual,anon):
+        self.individual=individual
+        self.anon=anon
+
+
 class Access:
        def connect():
               db.connect()
@@ -118,7 +132,7 @@ class Access:
        def createTables():
               try:
                      Access.connect()
-                     db.create_tables([Family])
+                     db.create_tables([Rule])
                      db.close()
                      print ("close1")
               except:
