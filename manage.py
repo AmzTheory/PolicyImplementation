@@ -1,7 +1,8 @@
 from classes import *
 from peewee  import *
 from types   import *
-import json 
+import json
+import inspect
 from datetime import date
 
 
@@ -63,7 +64,7 @@ def addRuleWithInstead(type, anon,condition,relation,policy,instead):
 
 #reterive relatives
 
-def siblings(id):
+def siblings(id):##id is and individual not just number... so adjust how all relation function is written to speed up the process
     siblings=set()
     ind=Individual.get_by_id(id)
     fam=Family.get_by_id(ind.familyId)
@@ -142,12 +143,12 @@ def firstDegree(id):
 
     return all
 
-def sisters():
+def sisters(id):
     sisters=set()
     ind=Individual.get_by_id(id)
     fam=Family.get_by_id(ind.familyId)
     for i in fam.children:
-        if(i.gender=="F"):
+        if(i.gender=="F" and i.id!=id):
             sisters.add(i)
 
     return sisters
@@ -180,8 +181,7 @@ def uncles(id):
     return uncles
 def maternalUncles(id):
     info=fam=getIndividualInfo(id)
-    maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
-    
+    maternalFam=getMaternalFamily(id,info[1]) #Mom Family   
     return returnOnlyGender(maternalFam.children,"M",None)
 
 def paternalUncles(id):
@@ -294,11 +294,11 @@ def getChildren(f):
     pass
 
 def returnOnlyGender(list,g,dontPrint):  #list of individuals
-    set=set()
+    s=set()
     for c in list:
         if(c.gender==g and c!=dontPrint):##if c is NONE this would produce a bug
             s.add(c)
-    return set
+    return s
 
 
 
@@ -331,21 +331,52 @@ def isResourceIncluded(policy,res):#right now we're not considerring conjunction
 
 def useShareRules(policies):
     shareWith=[]
+    ruleSharePpl=list()
     for p in policies:
+        ruleSharePpl=[]
         for r in p.rules:
             if(r.type=="share"):
-                ppl=relationInterface(r.relation,p.author) ##add people in respect to the relation
-                #print(ppl)
+                ppl=relationInterface(r.relation,p.author.id) ##add people in respect to the relation
                 conditions=json.loads(r.condition)
-                shareWith.append(checkConditions(ppl,conditions)) ##check conditions
+                checkConditions(ppl,conditions)
+                rd=RuleResults(ppl,conditions)
+                ruleSharePpl.append(rd) ##check conditions
+        ##after going through all rules..check any overlaps
+        # print(ruleSharePpl[0].ppl,ruleSharePpl[1].ppl)
+        shareWith.append(checkOverlapp(ruleSharePpl))
+    '''
+    tasks
+        finish checkOverlapp
+        test it
+        add never rules
+        work on detecting conflicts
+        generate the file
+        ---here you can meet with Age
+        write more relation functions
+        annonymous sharing
+        speed up the perfomance
 
-
-    
+     '''
     return shareWith
 
-
-
-
+def checkOverlapp(results):
+    if(len(results)==0):
+        return {}#empty set
+    elif(len(results)==1):
+        return results[0].ppl
+    else:
+        common=(results[0].ppl).intersection(results[1].ppl)
+        print(common)
+        if(common!={}):
+            # for c in common:
+            checkConditions(common,results[0].conditions) 
+            checkConditions(common,results[1].conditions)
+            ##an overlapp the doesnt pass all conditions
+            print("failed")
+            results[1].ppl.remove(c)
+        others=checkOverlapp(results[1:])
+        ret=(results[0].ppl).union(others)
+        return ret
 
 
 operators={##we might need consider operators with single operand
@@ -355,11 +386,11 @@ operators={##we might need consider operators with single operand
     "<" :lambda a,b: a<b,
     "<=":lambda a,b: a<=b,
     "and":lambda a,b: a and b,
-    "or":lambda a,b: a or b
+    "or":lambda a,b: a or b,
+    "not":lambda a,b: not a
 }
 
 def propertyInterface(i,property):
-  
     f=properties.get(property)
     return f(i)
     
@@ -381,11 +412,12 @@ properties={
 
 def checkConditions(theSet,conditions):
      temp=set()
+     if(conditions==[]):
+        return theSet
      for i in theSet:
          if not evaluateConditions(i,conditions):
              temp.add(i)  ##it doesnt pass the conditions
-     
-     theSet.symmetric_difference_update(temp)  
+     theSet.symmetric_difference_update(temp)##remove element the ones in both sets  
      return theSet
 def evaluateConditions(i,conditions):
    # print(conditions)

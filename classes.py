@@ -120,6 +120,14 @@ class SharedPeople():
         self.individual=individual
         self.anon=anon
 
+class RuleResults:
+    def printAll(listOfResult):
+           for i in listOfResult:
+              for n in i.ppl:
+                     print(n)
+    def __init__(self,ppl,conditions):
+        self.ppl=ppl
+        self.conditions=conditions
 
 class Access:
        def connect():
