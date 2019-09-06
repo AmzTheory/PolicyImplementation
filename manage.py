@@ -136,7 +136,7 @@ def grandChildren(id):
     return grandChildren
 
 def firstDegree(id):
-    all=set()
+    all=set()  ##think about threading here  (wont work cause SQL is )
     all.update(parents(id))
     all.update(siblings(id))
     all.update(children(id))
@@ -239,7 +239,7 @@ interface={
         "partners()":partners,
         "grandParents()":grandParents,
         "grandChildren()":grandChildren,
-        "fristDegree()":firstDegree,
+        "firstDegree()":firstDegree,
         "secondDegree()":secondDegree,
         "sisters()":sisters,
         "brothers()":brothers,
@@ -343,12 +343,35 @@ def useShareRules(policies):
                 rd=RuleResults(ppl,conditions)
                 ruleSharePpl.append(rd) ##check conditions
         ##after going through all rules..check any overlaps
-        #print(ruleSharePpl)
         shareWith.append(checkOverlapp(ruleSharePpl))
+    return shareWith.pop()##pop an element which the first cause it the only one
+
+def discardNeverRule(policies,sharePpl):
+    for p in policies:
+        for r in p.rules:
+            if(r.type=="never"):
+                ppl=relationInterface(r.relation,p.author.id) ##add people in respect to the relation
+                conditions=json.loads(r.condition)
+                filtered=checkConditions(ppl,conditions)
+                
+                removeElementsFromList(sharePpl,filtered)
+                #print(sharePpl,filtered)
+                
+def removeElementsFromList(ls,rls):
+    for r in rls:
+        for l in ls:
+            if(l.id==r.id):
+                ls.remove(r)
+                break
+
+
+            
+    
+   
     '''
     tasks
-        finish checkOverlapp
-        test it
+        finish checkOverlapp /done
+        test it              /done
         add never rules
         work on detecting conflicts
         generate the file
@@ -358,7 +381,7 @@ def useShareRules(policies):
         speed up the perfomance
 
      '''
-    return shareWith
+
 
 '''
 {a,b,c,d,e,f}
@@ -417,7 +440,7 @@ def checkOverlapp(results):
         results[0].ppl=results[0].ppl.difference(allRemove)
         others=checkOverlapp(results[1:])
         ret=(results[0].ppl).union(others)
-        
+
         return ret
 
 def removeInAll(results,rem):
@@ -458,7 +481,7 @@ properties={
 
 def checkConditions(theSet,conditions):
      temp=set()
-     if(conditions==[] or theSet==set()):
+     if(theSet==set()):
         return theSet
      for i in theSet:
          if not evaluateConditions(i,conditions):
@@ -541,6 +564,8 @@ def compare(resource):
     policies=findReleventPolicies(resource)
 # -inlcude all people in shares rules
     peopleShare=useShareRules(policies)
+    print(peopleShare)
+    includeNeverShare=discardNeverRule(policies,peopleShare)
     print(peopleShare)
 # -use never to discover conflicts
     ##conflicts=userNeverRules(policies)
