@@ -338,11 +338,12 @@ def useShareRules(policies):
             if(r.type=="share"):
                 ppl=relationInterface(r.relation,p.author.id) ##add people in respect to the relation
                 conditions=json.loads(r.condition)
-                checkConditions(ppl,conditions)
+                ##filtered=checkConditions(ppl,conditions)
+                ##print(ppl,filtered)
                 rd=RuleResults(ppl,conditions)
                 ruleSharePpl.append(rd) ##check conditions
         ##after going through all rules..check any overlaps
-        # print(ruleSharePpl[0].ppl,ruleSharePpl[1].ppl)
+        #print(ruleSharePpl)
         shareWith.append(checkOverlapp(ruleSharePpl))
     '''
     tasks
@@ -359,24 +360,69 @@ def useShareRules(policies):
      '''
     return shareWith
 
+'''
+{a,b,c,d,e,f}
+{b,c,z}
+(e,f,z)
+{g,h} cond()  {g}
+
+assume all common willf fail to pass
+
+checkOverlapp -1
+    {a,d}
+    {z}
+    {z}
+    {g,h}
+checkOverlapp -2
+    {}
+    {}
+    {g,h}
+checkOverlapp -3
+   {}
+   {}
+   {g,h}
+
+results={a,d,g,h}
+'''
+
+
+        
+
 def checkOverlapp(results):
+    allRemove=set()
     if(len(results)==0):
         return {}#empty set
     elif(len(results)==1):
         return results[0].ppl
     else:
-        common=(results[0].ppl).intersection(results[1].ppl)
-        print(common)
-        if(common!={}):
+        for i in range(1,len(results)):
+            # print(results[0].ppl,results[i].ppl)
+            #print("compare",results[0].ppl,results[i].ppl)
+            common=(results[0].ppl).intersection(results[i].ppl)
+        
             # for c in common:
-            checkConditions(common,results[0].conditions) 
-            checkConditions(common,results[1].conditions)
-            ##an overlapp the doesnt pass all conditions
-            print("failed")
-            results[1].ppl.remove(c)
+            
+            conditions=["and",results[0].conditions,results[i].conditions]
+            union=results[0].ppl.union(results[i].ppl)
+            filtered=checkConditions(union,conditions)
+
+
+            removed=common.difference(filtered)## the ones are common and failed to be in filtered
+            allRemove=allRemove.union(removed)
+            removeInAll(results[1:],removed)
+            #print("removed",removed,"result",results[i].ppl)
+            
+
+
+        results[0].ppl=results[0].ppl.difference(allRemove)
         others=checkOverlapp(results[1:])
         ret=(results[0].ppl).union(others)
+        
         return ret
+
+def removeInAll(results,rem):
+    for r in results:
+        r.ppl=r.ppl.difference(rem)
 
 
 operators={##we might need consider operators with single operand
@@ -412,15 +458,15 @@ properties={
 
 def checkConditions(theSet,conditions):
      temp=set()
-     if(conditions==[]):
+     if(conditions==[] or theSet==set()):
         return theSet
      for i in theSet:
          if not evaluateConditions(i,conditions):
              temp.add(i)  ##it doesnt pass the conditions
-     theSet.symmetric_difference_update(temp)##remove element the ones in both sets  
-     return theSet
+     
+     
+     return theSet.difference(temp)##remove the ones in both sets (the ones that have'nt passed) 
 def evaluateConditions(i,conditions):
-   # print(conditions)
     if(isinstance(conditions,int)):
         return conditions
     elif(isinstance(conditions,str)):
@@ -434,7 +480,9 @@ def evaluateConditions(i,conditions):
         op1=evaluateConditions(i,conditions[1])
         op2=evaluateConditions(i,conditions[2])
         ## op (propertyvalue,comparedvalue)
-        return op(op1,op2)
+        ret=op(op1,op2)
+       
+        return ret
         
     return True
 '''
