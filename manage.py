@@ -64,6 +64,19 @@ def addRuleWithInstead(type, anon,condition,relation,policy,instead):
 
 #reterive relatives
 
+
+'''
+    specific relations
+
+
+    children(name)
+    children([name])
+    siblings(name)
+    siblings([name])
+    uncle(name)
+    uncles([name])  /same for paternal and maternals
+'''
+
 def siblings(id):##id is and individual not just number... so adjust how all relation function is written to speed up the process
     siblings=set()
     ind=Individual.get_by_id(id)
@@ -373,7 +386,9 @@ def useShareRules(policy):
             rd=ShareComponents(ppl,conditions)
             share.append(rd) ##check conditions
     ##after going through all rules..check any overlaps
-    return checkOverlapp(share)##pop an element which the first cause it the only one
+    ret= checkOverlapp(share)##pop an element which the first cause it the only one
+    print(type(ret),ret)
+    return ret
 
 def userNeverRules(policy):
     never=set()
@@ -411,7 +426,7 @@ checkOverlapp -1
 checkOverlapp -2
     {}
     {}
-    {g,h}
+    {g,h
 checkOverlapp -3
    {}
    {}
@@ -426,7 +441,7 @@ results={a,d,g,h}
 def checkOverlapp(results):
     allRemove=set()
     if(len(results)==0):
-        return {}#empty set
+        return set()#empty set
     elif(len(results)==1):
         return results[0].ppl
     else:
@@ -582,7 +597,9 @@ def evaluatePolicies(policies):
 
 def detectConflict(results):
     res=CompareResults()
+    
     for i in results:
+         
          s=i.share
          for j in results:
              inters=s.intersection(j.never)
@@ -604,7 +621,7 @@ def compare(resource):
     policies=findReleventPolicies(resource)
 ## get share and nevers for every policy
     resultsBeforeConflicts=evaluatePolicies(policies)
-## detect conflict and form the fnal output    
+## detect conflict and form the fnal output  
     resultsFinal=detectConflict(resultsBeforeConflicts)
 
 ##print output

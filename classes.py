@@ -166,7 +166,7 @@ class CompareResults():
               for p in self.ppl:
                      ret+="\n"+p.firstName
 
-              ret+=("Conflict found:"+str(len(self.conflicts)))
+              ret+=("\nConflict found:"+str(len(self.conflicts)))
               
               for c in self.conflicts:
                      ret+="\n"+c.printInstance()
