@@ -1,6 +1,7 @@
 from classes import *
 from peewee  import *
 from types   import *
+from functools import singledispatch
 import json
 import inspect
 from datetime import date
@@ -76,16 +77,20 @@ def addRuleWithInstead(type, anon,condition,relation,policy,instead):
     uncle(name)
     uncles([name])  /same for paternal and maternals
 '''
-
-def siblings(id):##id is and individual not just number... so adjust how all relation function is written to speed up the process
+def siblings(*args):##id is and individual not just number... so adjust how all relation function is written to speed up the process
     siblings=set()
+    id=args[0]
     ind=Individual.get_by_id(id)
     fam=Family.get_by_id(ind.familyId)
     for i in fam.children:
-        if(i.id!=id):
+        if(len(args)== 2):
+            if(i.firstName==args[1]):
+                return {i} ##what about if the author include his name
+        elif(i.id!=id):
             siblings.add(i)
     return siblings
 
+#def iterater()
 
 def parents(id):
     fam=getIndividualInfo(id)[1]
@@ -102,14 +107,20 @@ def dad(id):
     dad=Individual.get_by_id(fam.paternal)
     return {dad}
 
-def  children(id):
+def  children(*args):
      children=set()
+     id=args[0]
      info=getIndividualInfo(id)
      fam=info[1]
      ind=info[0]
      families=[]
      for f in getFamiliesForIndividual(ind.id):
         for i in f.children:
+    
+            if(len(args)== 2):
+                if(i.firstName==args[1]):
+                    return {i} 
+            else:
                 children.add(i)
      return children
 def sons(id):
@@ -300,9 +311,13 @@ interface={
         "twins()":twins
 
     }    
-def relationInterface(relation,id):
+def relationInterface(relation,arguments):
     f=interface.get(relation)
-    return f(id)
+
+    if(len(arguments)==1):
+        return f(arguments[0])# f(id)
+    elif(len(arguments)==2):
+        return f(arguments[0],arguments[1])  #f(id,name)
 
   
 
@@ -379,7 +394,17 @@ def useShareRules(policy):
     share=[]
     for r in policy.rules:
         if(r.type=="share"):
-            ppl=relationInterface(r.relation,policy.author.id) ##add people in respect to the relation
+            #relation
+            funArgs=[policy.author.id]
+            relation=r.relation
+            bracketInd=r.relation.index("(")
+            args=r.relation[bracketInd+1:-1]
+            if(args!=""):
+                splitArgs=args.split(",")
+                funArgs.extend(splitArgs)
+                relation=r.relation[:bracketInd]+"()"
+                print(relation,args,splitArgs)
+            ppl=relationInterface(relation,funArgs) ##add people in respect to the relation
             conditions=json.loads(r.condition)
             ##filtered=checkConditions(ppl,conditions)
             ##print(ppl,filtered)
@@ -387,14 +412,13 @@ def useShareRules(policy):
             share.append(rd) ##check conditions
     ##after going through all rules..check any overlaps
     ret= checkOverlapp(share)##pop an element which the first cause it the only one
-    print(type(ret),ret)
     return ret
 
 def userNeverRules(policy):
     never=set()
     for r in policy.rules:
         if(r.type=="never"):
-            ppl=relationInterface(r.relation,policy.author.id) ##add people in respect to the relation
+            ppl=relationInterface(r.relation,[policy.author.id]) ##add people in respect to the relation
             conditions=json.loads(r.condition)
             filtered=checkConditions(ppl,conditions)
             never=never.union(filtered)   
@@ -631,7 +655,6 @@ def compare(resource):
 ##this block would include function used for generating policy files
 
 def convertToExp(conditions):
-    #print(conditions)
     if(conditions==[]):
         return ""
     elif(isinstance(conditions,int)):

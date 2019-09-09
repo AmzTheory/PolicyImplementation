@@ -1,3 +1,3 @@
 import manage as p
 
-p.compare(3)
+p.compare(2)
