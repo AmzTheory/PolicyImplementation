@@ -103,7 +103,7 @@ class Condition(BaseModel):
 
 class RelationToRule(BaseModel):
        ruleId=ForeignKeyField(Rule,backref="relations")
-       relationId=ForeignKeyField(Relation,backref="rules")
+       relationId=ForeignKeyField(Relation,)
 
 
 class RuleDetails(BaseModel):
@@ -120,7 +120,7 @@ class SharedPeople():
         self.individual=individual
         self.anon=anon
 
-class RuleResults:
+class ShareComponents:
     def printAll(listOfResult):
            for i in listOfResult:
               for n in i.ppl:
@@ -129,6 +129,48 @@ class RuleResults:
         self.ppl=ppl
         self.conditions=conditions
 
+class RuleResults():
+       def __init__(self,policy,share,never):
+              self.policy=policy
+              self.share=share
+              self.never=never
+       def printInstance(self):
+              print(self.policy.id,self.share,self.never)
+
+       def getAuthor(self):
+              return self.policy
+
+
+class Conflict():
+       def __init__(self,p1,p2,ind):
+              self.p1=p1
+              self.p2=p2
+              self.ind=ind
+
+       def printInstance(self):
+              return "Between "+self.p1.author.firstName+" and "+self.p2.author.firstName+" regarding "+self.ind.firstName
+class CompareResults():
+       def __init__(self):
+              self.ppl=set()
+              self.conflicts=[]
+       
+       def addPpl(self,ppl):
+              self.ppl=self.ppl.union(ppl)
+
+       def addConflict(self,p1,p2,ind):
+              self.conflicts.append(Conflict(p1,p2,ind))
+       
+       def printInstance(self):
+              ret="Share with the following:"
+              
+              for p in self.ppl:
+                     ret+="\n"+p.firstName
+
+              ret+=("Conflict found:"+str(len(self.conflicts)))
+              
+              for c in self.conflicts:
+                     ret+="\n"+c.printInstance()
+              return ret
 class Access:
        def connect():
               db.connect()

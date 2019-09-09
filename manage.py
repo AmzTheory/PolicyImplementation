@@ -99,7 +99,28 @@ def  children(id):
         for i in f.children:
                 children.add(i)
      return children
-
+def sons(id):
+    children=set()
+    info=getIndividualInfo(id)
+    fam=info[1]
+    ind=info[0]
+    families=[]
+    for f in getFamiliesForIndividual(ind.id):
+        for i in f.children:
+            if(i.gender=="M"):
+                children.add(i)
+    return children
+def daughters(id):
+     children=set()
+     info=getIndividualInfo(id)
+     fam=info[1]
+     ind=info[0]
+     families=[]
+     for f in getFamiliesForIndividual(ind.id):
+        for i in f.children:
+                if(i.gender=="F"):
+                    children.add(i)
+     return children
 def partners(id):
     ##updatee family schema to make maternal & paternal as foreign keys
     partners=set()
@@ -218,13 +239,25 @@ def paternalAunts(id):
 
 #will be implemented at later time
 def nephew(id):
-    pass
+    aunts=set()
+    info=fam=getIndividualInfo(id)
+    maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
+    paternalFam=getPaternalFamily(id,info[1]) #Dad Family
 def niece(id):
     pass
 def twins(id):
     pass
 def maternalSiblings(id):
-    pass
+    children=set()
+    info=getIndividualInfo(id)
+    fam=info[1]
+    ind=info[0]
+    families=[]
+    for f in getFamiliesForIndividual(ind.id):
+        for i in f.children:
+                if(i.gender=="F"):
+                    children.add(i)
+        return children
 def paternalSiblings(id):
     pass
 
@@ -329,33 +362,28 @@ def isResourceIncluded(policy,res):#right now we're not considerring conjunction
                 return True #in which case the resource is is relevent to the policy
     return False
 
-def useShareRules(policies):
-    shareWith=[]
-    ruleSharePpl=list()
-    for p in policies:
-        ruleSharePpl=[]
-        for r in p.rules:
-            if(r.type=="share"):
-                ppl=relationInterface(r.relation,p.author.id) ##add people in respect to the relation
-                conditions=json.loads(r.condition)
-                ##filtered=checkConditions(ppl,conditions)
-                ##print(ppl,filtered)
-                rd=RuleResults(ppl,conditions)
-                ruleSharePpl.append(rd) ##check conditions
-        ##after going through all rules..check any overlaps
-        shareWith.append(checkOverlapp(ruleSharePpl))
-    return shareWith.pop()##pop an element which the first cause it the only one
+def useShareRules(policy):
+    share=[]
+    for r in policy.rules:
+        if(r.type=="share"):
+            ppl=relationInterface(r.relation,policy.author.id) ##add people in respect to the relation
+            conditions=json.loads(r.condition)
+            ##filtered=checkConditions(ppl,conditions)
+            ##print(ppl,filtered)
+            rd=ShareComponents(ppl,conditions)
+            share.append(rd) ##check conditions
+    ##after going through all rules..check any overlaps
+    return checkOverlapp(share)##pop an element which the first cause it the only one
 
-def discardNeverRule(policies,sharePpl):
-    for p in policies:
-        for r in p.rules:
-            if(r.type=="never"):
-                ppl=relationInterface(r.relation,p.author.id) ##add people in respect to the relation
-                conditions=json.loads(r.condition)
-                filtered=checkConditions(ppl,conditions)
-                
-                removeElementsFromList(sharePpl,filtered)
-                #print(sharePpl,filtered)
+def userNeverRules(policy):
+    never=set()
+    for r in policy.rules:
+        if(r.type=="never"):
+            ppl=relationInterface(r.relation,policy.author.id) ##add people in respect to the relation
+            conditions=json.loads(r.condition)
+            filtered=checkConditions(ppl,conditions)
+            never=never.union(filtered)   
+    return never
                 
 def removeElementsFromList(ls,rls):
     for r in rls:
@@ -366,22 +394,6 @@ def removeElementsFromList(ls,rls):
 
 
             
-    
-   
-    '''
-    tasks
-        finish checkOverlapp /done
-        test it              /done
-        add never rules
-        work on detecting conflicts
-        generate the file
-        ---here you can meet with Age
-        write more relation functions
-        annonymous sharing
-        speed up the perfomance
-
-     '''
-
 
 '''
 {a,b,c,d,e,f}
@@ -557,19 +569,93 @@ flatten the list of people
 '''
 
 
+def evaluatePolicies(policies):
+    results=[]
+    for p in policies:
+        share=useShareRules(p)
+        never=userNeverRules(p)
+        results.append(RuleResults(p,share,never))
+    return results
+        
+
+
+
+def detectConflict(results):
+    res=CompareResults()
+    for i in results:
+         s=i.share
+         for j in results:
+             inters=s.intersection(j.never)
+             if(not (inters==set() or i.getAuthor().id==j.getAuthor().id)):
+                ##at least one conflict found
+                 addConflictToResults(res,inters,i.policy,j.policy)
+             dif=s.difference(j.never)
+             res.addPpl(dif)##bit naive tho I think
+    return res
+                
+def addConflictToResults(res,ppl,p1,p2):
+    
+    for p in ppl:
+         res.addConflict(p1,p2,p)
 
 def compare(resource):
 # algorithm used for compare function
 # -fetch all relevent policies based on the queried resource
     policies=findReleventPolicies(resource)
-# -inlcude all people in shares rules
-    peopleShare=useShareRules(policies)
-    print(peopleShare)
-    includeNeverShare=discardNeverRule(policies,peopleShare)
-    print(peopleShare)
-# -use never to discover conflicts
-    ##conflicts=userNeverRules(policies)
-# -show the results with any conflicts that exists
+## get share and nevers for every policy
+    resultsBeforeConflicts=evaluatePolicies(policies)
+## detect conflict and form the fnal output    
+    resultsFinal=detectConflict(resultsBeforeConflicts)
+
+##print output
+    print(resultsFinal.printInstance())
+
+
+##this block would include function used for generating policy files
+
+def convertToExp(conditions):
+    #print(conditions)
+    if(conditions==[]):
+        return ""
+    elif(isinstance(conditions,int)):
+        return str(conditions)
+    elif(isinstance(conditions,str)):
+        if(conditions.startswith(".")):
+            return conditions[1:]
+        else:
+            return conditions         
+    elif conditions!=[]:
+        return convertToExp(conditions[1])+" "+conditions[0]+" "+convertToExp(conditions[2])
+
+
+
+def generateRule(r):
+    cond=convertToExp(json.loads(r.condition))
+    return r.relation+":"+cond
+
+def generateRules(p,typeRule):
+    ret=""
+    
+    for r in p.rules:
+        if r.type==typeRule: 
+            ret+="\t"+generateRule(r)+"\n"
+    return ret
+    
+
+def generatePolicy(id):
+    p=Policy.get_by_id(id)
+
+    #construct share and never block
+    rules="\nshare\n"+generateRules(p,"share")+"never\n"+generateRules(p,"never")
+
+    policy="author "+str(p.id)
+    policy+="\nresources "+p.resources+"{"+rules+"}"
+    return policy
+
+def generatePolicies(ps):
+    for p in ps:
+        print(generatePolicy(p))
+
 
     
 
