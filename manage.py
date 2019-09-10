@@ -338,13 +338,35 @@ def paternalAunts(*args):
 
 
 #will be implemented at later time
-def nephew(id):
-    aunts=set()
-    info=fam=getIndividualInfo(id)
-    maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
-    paternalFam=getPaternalFamily(id,info[1]) #Dad Family
-def niece(id):
-    pass
+def nephews(*args):
+    id= args[0]
+    nephews=set()
+    ind=Individual.get_by_id(id)
+    fam=Family.get_by_id(ind.familyId)
+
+    
+    ##Full nephews
+    for c in fam.children:
+        if(c.id!=id):
+            nephews.update(sons(c.id))
+
+    ##maternal nephews  
+    ##paternal newpews
+    return nephews
+def nieces(*args):
+    id = args[0]
+    nieces = set()
+    ind = Individual.get_by_id(id)
+    fam = Family.get_by_id(ind.familyId)
+
+    ##Full niece
+    for c in fam.children:
+        if(c.id != id):
+            nieces.update(daughters(c.id))
+    ##maternal niece
+    ##paternal niece
+    
+    return nieces
 def twins(id):
     pass
 
@@ -371,8 +393,8 @@ interface={
         "aunts()":aunts,
         "maternalAunts()":maternalAunts,
         "paternalAunts()":paternalAunts,
-        "nephew()":nephew,
-        "niece()":niece,
+        "nephews()":nephews,
+        "nieces()":nieces,
         "twins()":twins
 
     }    
@@ -507,35 +529,7 @@ def removeElementsFromList(ls,rls):
                 break
 
 
-            
-
-'''
-{a,b,c,d,e,f}
-{b,c,z}
-(e,f,z)
-{g,h} cond()  {g}
-
-assume all common willf fail to pass
-
-checkOverlapp -1
-    {a,d}
-    {z}
-    {z}
-    {g,h}
-checkOverlapp -2
-    {}
-    {}
-    {g,h
-checkOverlapp -3
-   {}
-   {}
-   {g,h}
-
-results={a,d,g,h}
-'''
-
-
-        
+                    
 
 def checkOverlapp(results):
     allRemove=set()
