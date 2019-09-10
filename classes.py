@@ -147,7 +147,7 @@ class Conflict():
               self.ind=ind
 
        def printInstance(self):
-              return "Between "+self.p1.author.firstName+" and "+self.p2.author.firstName+" regarding "+self.ind.firstName
+              return "Between "+self.p1.author.firstName+" and "+self.p2.author.firstName+" regarding "+self.ind.firstName+"  (check policies "+str(self.p1.id)+" and "+str(self.p2.id)+" to find out why)"
 class CompareResults():
        def __init__(self):
               self.ppl=set()
@@ -165,7 +165,7 @@ class CompareResults():
               for p in self.ppl:
                      ret+="\n"+p.firstName
 
-              ret+=("\nConflict found:"+str(len(self.conflicts)))
+              ret+=("\nConflicts found:"+str(len(self.conflicts)))
               
               for c in self.conflicts:
                      ret+="\n"+c.printInstance()

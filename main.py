@@ -1,3 +1,3 @@
 import manage as p
 
-print(p.uncles(12))
+print(p.compare(3))

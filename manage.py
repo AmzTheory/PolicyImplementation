@@ -157,10 +157,12 @@ def grandParents(id):
     maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
     paternalFam=getPaternalFamily(id,info[1]) #Dad Family
 
-    grandParents.add(getIndividual(maternalFam.maternal))
-    grandParents.add(getIndividual(maternalFam.paternal))
-    grandParents.add(getIndividual(paternalFam.maternal))
-    grandParents.add(getIndividual(paternalFam.paternal))
+    if(maternalFam!=None):
+        grandParents.add(getIndividual(maternalFam.maternal))
+        grandParents.add(getIndividual(maternalFam.paternal))
+    if(paternalFam!=None):
+        grandParents.add(getIndividual(paternalFam.maternal))
+        grandParents.add(getIndividual(paternalFam.paternal))
 
     return grandParents
     
@@ -426,13 +428,13 @@ def getFamiliesForIndividual(id):
 
 
 def getMaternalFamily(id,fam):
-    if (fam!=None):
+    if (fam.maternalFamily!=None):
         return Family.get(Family.id==fam.maternalFamily.id)
 
     return None
 
 def getPaternalFamily(id,fam):
-    if (fam!=None):
+    if (fam.paternalFamily!=None):
         return Family.get(Family.id==fam.paternalFamily.id)
     
     return None
@@ -692,17 +694,19 @@ def detectConflict(results):
     res=CompareResults()
     
     for i in results:
-         
+         agg=set()
          s=i.share
          for j in results:
              inters=s.intersection(j.never)
              if(not (inters==set() or i.getAuthor().id==j.getAuthor().id)):
                 ##at least one conflict found
                  addConflictToResults(res,inters,i.policy,j.policy)
-             dif=s.difference(j.never)
-             res.addPpl(dif)##bit naive tho I think
+             s=dif=s.difference(j.never)
+         res.addPpl(s)##bit naive tho I think
     return res
-                
+
+
+    
 def addConflictToResults(res,ppl,p1,p2):
     
     for p in ppl:
