@@ -66,17 +66,6 @@ def addRuleWithInstead(type, anon,condition,relation,policy,instead):
 #reterive relatives
 
 
-'''
-    specific relations
-
-
-    children(name)
-    children([name])
-    siblings(name)
-    siblings([name])
-    uncle(name)
-    uncles([name])  /same for paternal and maternals
-'''
 def siblings(*args):##id is and individual not just number... so adjust how all relation function is written to speed up the process
     id=args[0]
     ind=Individual.get_by_id(id)
@@ -100,16 +89,26 @@ def parents(id):
     fam=getIndividualInfo(id)[1]
     mam=Individual.get_by_id(fam.maternal)
     dad=Individual.get_by_id(fam.paternal)
-    return {mam, dad}
+    
+    if(fam.paternal!=None):
+        return {mam, dad}
+    ##in case the individual doesn't have parents(root family)
+    return {}
 
 def mam(id):
     fam=getIndividualInfo(id)[1]
     mam=Individual.get_by_id(fam.maternal)
-    return {mam}
+    if(fam.maternal!=None):
+        return {mam}
+    return {}#in case the individual doesn't have mam
 def dad(id):
     fam=getIndividualInfo(id)[1]
     dad=Individual.get_by_id(fam.paternal)
-    return {dad}
+    if(fam.paternal != None):
+        return {dad}
+    
+    #in case the individual doesn't have dad(root family)
+    return {}
 
 def  children(*args):
      children=set()
