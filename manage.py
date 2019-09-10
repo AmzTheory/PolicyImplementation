@@ -78,19 +78,23 @@ def addRuleWithInstead(type, anon,condition,relation,policy,instead):
     uncles([name])  /same for paternal and maternals
 '''
 def siblings(*args):##id is and individual not just number... so adjust how all relation function is written to speed up the process
-    siblings=set()
     id=args[0]
     ind=Individual.get_by_id(id)
     fam=Family.get_by_id(ind.familyId)
-    for i in fam.children:
-        if(len(args)== 2):
-            if(i.firstName==args[1]):
-                return {i} ##what about if the author include his name
-        elif(i.id!=id):
-            siblings.add(i)
+
+    prop=(lambda a:a.id!=id)
+
+    siblings=iterator(fam.children,args,prop)
+    for fd in getFamiliesForIndividual(fam.paternal):
+        siblings.update(iterator(fd.children,args,prop))
+
+    for md in getFamiliesForIndividual(fam.maternal):
+        siblings.update(iterator(md.children,args,prop))
+    
+
     return siblings
 
-#def iterater()
+
 
 def parents(id):
     fam=getIndividualInfo(id)[1]
@@ -115,35 +119,27 @@ def  children(*args):
      ind=info[0]
      families=[]
      for f in getFamiliesForIndividual(ind.id):
-        for i in f.children:
-    
-            if(len(args)== 2):
-                if(i.firstName==args[1]):
-                    return {i} 
-            else:
-                children.add(i)
+        children.update(iterator(f.children, args, (lambda a: True)))
      return children
-def sons(id):
+def sons(*args):
     children=set()
+    id=args[0]
     info=getIndividualInfo(id)
     fam=info[1]
     ind=info[0]
     families=[]
     for f in getFamiliesForIndividual(ind.id):
-        for i in f.children:
-            if(i.gender=="M"):
-                children.add(i)
+        children.update(iterator(f.children, args, (lambda a: a.gender=="M")))
     return children
-def daughters(id):
+def daughters(*args):
      children=set()
+     id=args[0]
      info=getIndividualInfo(id)
      fam=info[1]
      ind=info[0]
      families=[]
      for f in getFamiliesForIndividual(ind.id):
-        for i in f.children:
-                if(i.gender=="F"):
-                    children.add(i)
+         children.update(iterator(f.children, args, (lambda a: a.gender=="F")))
      return children
 def partners(id):
     ##updatee family schema to make maternal & paternal as foreign keys
@@ -169,15 +165,14 @@ def grandParents(id):
     return grandParents
     
 
-def grandChildren(id):
+def grandChildren(*args):
+    id=args[0]
     grandChildren=set()
     for c in getFamiliesForIndividual(id):
         #for every child we need to print his children
         for c in c.children:
             for f in getFamiliesForIndividual(c):
-                for gc in f.children:
-                    grandChildren.add(gc)
-    
+                grandChildren.update(iterator(f.children, args, (lambda a: True)))               
     return grandChildren
 
 def firstDegree(id):
@@ -188,24 +183,93 @@ def firstDegree(id):
 
     return all
 
-def sisters(id):
+def sisters(*args):
+    id = args[0]
+
     sisters=set()
     ind=Individual.get_by_id(id)
     fam=Family.get_by_id(ind.familyId)
-    for i in fam.children:
-        if(i.gender=="F" and i.id!=id):
-            sisters.add(i)
+    
+    ##property/conditions
+    prop=(lambda a:a.id!=id and a.gender=="F")
+
+    ##full siblings
+    sisters=iterator(fam.children,args,prop)
+    
+    ##paternal siblings
+    for fd in getFamiliesForIndividual(fam.paternal):
+        sisters.update(iterator(fd.children,args,prop))
+
+    ##maternal siblings
+    for md in getFamiliesForIndividual(fam.maternal):
+        sisters.update(iterator(md.children,args,prop))
 
     return sisters
     
-def brothers():
+def brothers(*args):
+    id = args[0]
     brothers=set()
     ind=Individual.get_by_id(id)
     fam=Family.get_by_id(ind.familyId)
-    for i in fam.children:
-        if(i.gender=="M"):
-            brothers.add(i)
+   ##property/conditions
+    prop=(lambda a:a.id!=id and a.gender=="M")
+
+    ##full siblings
+    brothers=iterator(fam.children,args,prop)
+    
+    
+    ##paternal siblings
+    for fd in getFamiliesForIndividual(fam.paternal):
+        brothers.update(iterator(fd.children,args,prop))
+
+    ##maternal siblings
+    for md in getFamiliesForIndividual(fam.maternal):
+        brothers.update(iterator(md.children,args,prop))
+
     return brothers
+
+def paternalSiblings(*args):
+     id=args[0]
+     pSiblings = set()
+     ind=Individual.get_by_id(id)
+     fam=Family.get_by_id(ind.familyId)
+
+     prop=(lambda a:a.id!=id and a.familyId!=ind.familyId)
+
+     for fd in getFamiliesForIndividual(fam.paternal):
+            pSiblings.update(iterator(fd.children, args, prop))
+     return pSiblings
+def maternalSiblings(*args):
+    id=args[0]
+    mSiblings=set()
+    ind=Individual.get_by_id(id)
+    fam=Family.get_by_id(ind.familyId)
+    prop=(lambda a:a.id!=id and a.familyId!=ind.familyId)
+
+    ##maternal siblings
+    for md in getFamiliesForIndividual(fam.maternal):
+        mSiblings.update(iterator(md.children, args, prop))
+
+    return mSiblings
+
+
+def halfSiblings(*args):
+    hfSiblings=set()
+    hfSiblings=paternalSiblings(args)
+    hfSiblings.update(maternalSiblings(args))
+    return hfSiblings
+
+def fullSiblings(*args):
+    id=args[0]
+    fSiblings=set()
+    ind=Individual.get_by_id(id)
+    fam=Family.get_by_id(ind.familyId)
+    prop=(lambda a:a.id!=id)
+
+    ##full siblings
+    fSiblings=iterator(fam.children,args,prop)
+    return fSiblings
+
 def secondDegree(id):
     all=set()
     all.update(uncles(id))
@@ -213,52 +277,64 @@ def secondDegree(id):
     all.update(grandParents(id))
     all.update(grandChildren(id))
     return all
-def uncles(id):
+def uncles(*args):
+    id=args[0]
     uncles=set()
     info=fam=getIndividualInfo(id)
     maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
     paternalFam=getPaternalFamily(id,info[1]) #Dad Family
+    prop=lambda a:a.id!=info[1].paternal.id and a.gender=="M"
 
-    dontPrint=info[0].familyId.paternal
-
-    uncles.update(returnOnlyGender(maternalFam.children,"M",dontPrint))
-    uncles.update(returnOnlyGender(paternalFam.children,"M",dontPrint))
+    uncles.update(iterator(paternalFam.children, args, prop))
+    uncles.update(iterator(maternalFam.children,args,prop))
     return uncles
-def maternalUncles(id):
+def maternalUncles(*args): 
+    id=args[0]
+    maternalUncles=set()
     info=fam=getIndividualInfo(id)
-    maternalFam=getMaternalFamily(id,info[1]) #Mom Family   
-    return returnOnlyGender(maternalFam.children,"M",None)
+    maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
+    prop=lambda a:a.gender=="M"
+    maternalUncles.update(iterator(maternalFam.children,args,prop))
+    return maternalUncles
 
-def paternalUncles(id):
+def paternalUncles(*args):
+    id=args[0]
+    paternalUncles=set()
     info=fam=getIndividualInfo(id)
-    paternalFam=getPaternalFamily(id,info[1]) #DAD Family 
-    dontPrint=info[0].familyId.paternal
-    
-    return returnOnlyGender(paternalFam.children,"M",dontPrint)
+    paternalFam=getPaternalFamily(id,info[1]) #Mom Family 
+    prop=lambda a:a.id!=info[1].paternal.id and a.gender=="M"
+    paternalUncles.update(iterator(paternalFam.children,args,prop))
+    return paternalUncles
 
-def aunts(id):
+def aunts(*args):
+    id=args[0]
     aunts=set()
     info=fam=getIndividualInfo(id)
     maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
     paternalFam=getPaternalFamily(id,info[1]) #Dad Family
-    
-    dontPrint=info[0].familyId.maternal
+    prop=lambda a:a.id!=info[1].paternal.id and a.gender=="F"
 
-    aunts.update(returnOnlyGender(maternalFam.children,"F",dontPrint))
-    aunts.update(returnOnlyGender(paternalFam.children,"F",dontPrint))
+    aunts.update(iterator(paternalFam.children, args, prop))
+    aunts.update(iterator(maternalFam.children,args,prop))
     return aunts
-def maternalAunts(id):
+def maternalAunts(*args):
+    id=args[0]
+    maternalAunts=set()
     info=fam=getIndividualInfo(id)
-    maternalFam=getMaternalFamily(id,info[1]) #Mom Family  
+    maternalFam=getMaternalFamily(id,info[1]) #Mom Family 
+    prop=lambda a:a.id!=info[1].maternal.id and a.gender=="F"
 
-    dontPrint=info[0].familyId.maternal
-    return returnOnlyGender(maternalFam.children,"F",dontPrint)
-def paternalAunts(id):
+    maternalAunts.update(iterator(maternalFam.children,args,prop))
+    return maternalAunts
+def paternalAunts(*args):
+    id=args[0]
+    paternalAunts=set()
     info=fam=getIndividualInfo(id)
-    paternalFam=getPaternalFamily(id,info[1]) #Mom Family  
-    return returnOnlyGender(paternalFam.children,"F",None)
+    paternalFam=getPaternalFamily(id,info[1]) #Mom Family 
+    prop=lambda a:a.gender=="F"
 
-
+    paternalAunts.update(iterator(paternalFam.children,args,prop))
+    return paternalAunts
 
 
 #will be implemented at later time
@@ -271,19 +347,6 @@ def niece(id):
     pass
 def twins(id):
     pass
-def maternalSiblings(id):
-    children=set()
-    info=getIndividualInfo(id)
-    fam=info[1]
-    ind=info[0]
-    families=[]
-    for f in getFamiliesForIndividual(ind.id):
-        for i in f.children:
-                if(i.gender=="F"):
-                    children.add(i)
-        return children
-def paternalSiblings(id):
-    pass
 
 interface={
         "siblings()":siblings,
@@ -293,6 +356,8 @@ interface={
         "mother()":mam,
         "father()":dad,
         "children()":children,
+        "sons()":sons,
+        "daughters()":daughters,
         "partners()":partners,
         "grandParents()":grandParents,
         "grandChildren()":grandChildren,
@@ -337,7 +402,6 @@ def getIndividual(id):
 def getFamiliesForIndividual(id):
     return Family.select().where((Family.paternal==id) | (Family.maternal==id))
 
-    
 
 def getMaternalFamily(id,fam):
     if (fam!=None):
@@ -360,6 +424,17 @@ def returnOnlyGender(list,g,dontPrint):  #list of individuals
         if(c.gender==g and c!=dontPrint):##if c is NONE this would produce a bug
             s.add(c)
     return s
+
+
+def iterator(select, args, f):
+    returnSet = set()
+    for i in select:
+         if(len(args) == 2):
+            if(i.firstName == args[1] and f(i)):
+                returnSet.add(i)  # what about if the author included his name
+         elif(f(i)):
+             returnSet.add(i)
+    return returnSet
 
 
 

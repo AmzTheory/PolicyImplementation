@@ -1,5 +1,4 @@
 from peewee import *
-import sys
 from playhouse.migrate import *
 
 #implementation needed
