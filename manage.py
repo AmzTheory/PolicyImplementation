@@ -492,21 +492,8 @@ def useShareRules(policy):
     share=[]
     for r in policy.rules:
         if(r.type=="share"):
-            #relation
-            funArgs=[policy.author.id]
-            relation=r.relation
-            bracketInd=r.relation.index("(")
-            args=r.relation[bracketInd+1:-1]
-            if(args!=""):
-                splitArgs=args.split(",")
-                funArgs.extend(splitArgs)
-                relation=r.relation[:bracketInd]+"()"
-                print(relation,args,splitArgs)
-            ppl=relationInterface(relation,funArgs) ##add people in respect to the relation
-            conditions=json.loads(r.condition)
-            ##filtered=checkConditions(ppl,conditions)
-            ##print(ppl,filtered)
-            rd=ShareComponents(ppl,conditions)
+            arguments = getRelationArgs(policy.author.id, r)  # [relation,args]
+            rd=getPplRule(r,arguments[0],arguments[1],False)
             share.append(rd) ##check conditions
     ##after going through all rules..check any overlaps
     ret= checkOverlapp(share)##pop an element which the first cause it the only one
@@ -514,14 +501,39 @@ def useShareRules(policy):
 
 def userNeverRules(policy):
     never=set()
+    instead=set()
     for r in policy.rules:
         if(r.type=="never"):
-            ppl=relationInterface(r.relation,[policy.author.id]) ##add people in respect to the relation
-            conditions=json.loads(r.condition)
-            filtered=checkConditions(ppl,conditions)
-            never=never.union(filtered)   
+            arguments=getRelationArgs(policy.author.id,r)   #[relation,args]
+            filtered=getPplRule(r,arguments[0],arguments[1],True)
+            # if(r.instead!="")
+            #     instead.update(useShareRules())
+            
+            never.update(filtered)   
     return never
-                
+
+
+def getPplRule(rule,relation,args,filter):
+    ppl=relationInterface(relation,args) ##add people to respect to the relation
+    conditions=json.loads(rule.condition)
+
+    if(filter):
+        return checkConditions(ppl,conditions)
+
+    return ShareComponents(ppl, conditions)
+
+def getRelationArgs(pAuthorId,rule):
+    funArgs = [pAuthorId]
+    relation=rule.relation
+    bracketInd=rule.relation.index("(")
+    args=rule.relation[bracketInd+1:-1]
+    if(args!=""):
+        splitArgs=args.split(",")
+        funArgs.extend(splitArgs)
+        relation = rule.relation[:bracketInd]+"()"
+    return [relation,funArgs]
+
+
 def removeElementsFromList(ls,rls):
     for r in rls:
         for l in ls:
@@ -623,7 +635,7 @@ def evaluateConditions(i,conditions):
 
         op1=evaluateConditions(i,conditions[1])
         op2=evaluateConditions(i,conditions[2])
-        ## op (propertyvalue,comparedvalue)
+        ## op (propertyvalue,comparedvalue)e
         ret=op(op1,op2)
        
         return ret
@@ -707,9 +719,7 @@ def detectConflict(results):
 
     
 def addConflictToResults(res,ppl,p1,p2):
-    
-    for p in ppl:
-         res.addConflict(p1,p2,p)
+         res.addConflict(p1,p2,ppl)
 
 def compare(resource):
 # algorithm used for compare function
@@ -760,7 +770,7 @@ def generatePolicy(id):
     #construct share and never block
     rules="\nshare\n"+generateRules(p,"share")+"never\n"+generateRules(p,"never")
 
-    policy="author "+str(p.id)
+    policy="author "+str(p.author.id)
     policy+="\nresources "+p.resources+"{"+rules+"}"
     return policy
 

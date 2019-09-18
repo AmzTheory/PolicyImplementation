@@ -141,13 +141,18 @@ class RuleResults():
 
 
 class Conflict():
-       def __init__(self,p1,p2,ind):
+       def __init__(self,p1,p2,inds):
               self.p1=p1
               self.p2=p2
-              self.ind=ind
+              self.inds=inds
 
+       def getIndividialNames(self):
+              ret=set()
+              for i in self.inds:
+                     ret.add(i.firstName)
+              return str(ret)
        def printInstance(self):
-              return "Between "+self.p1.author.firstName+" and "+self.p2.author.firstName+" regarding "+self.ind.firstName+"  (check policies "+str(self.p1.id)+" and "+str(self.p2.id)+" to find out why)"
+              return "Between "+self.p1.author.firstName+" and "+self.p2.author.firstName+" regarding "+self.getIndividialNames()+"  (check policies "+str(self.p1.id)+" and "+str(self.p2.id)+" to find out why)"
 class CompareResults():
        def __init__(self):
               self.ppl=set()
