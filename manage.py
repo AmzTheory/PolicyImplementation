@@ -503,7 +503,7 @@ def userNeverRules(author, rules):
     instead=set()
     for r in rules:
         filtered=evaluateRule(author,r,True)
-        if(r.instead!=""):
+        if(r.instead!=[]):
             insteadRules = convertJsonToRules(r.instead)
             for f in filtered:
                 instead.update(useShareRules(f.id, insteadRules))
@@ -661,53 +661,7 @@ def evaluateConditions(i,conditions):
         return ret
         
     return True
-'''
-we got rules
-    what we do when have and overlapp of individuals among bunch of relations. which one should we have higer presendence?
-    note: that every rules has it own conditoins
 
-    one approach could think of rules as gates for people to get in the shared people basket
-    however the other approach might make sure when sharing with x, that x wouldn't violate any of the rest rules.
-
-    the former is easy and quite straight forward to implement, however the latter would increase the complexity of the reading/parsing 
-    the rules but it seem to be more natual approach or at least what would you expect.  
-
-
-    other conflict that might occur is if individual x was allowed to get in by rules r1 and r2. Hoever r1 and r2 have different level of
-    identity exposure. r1 is + and r2 is -, in this case (-) would have higher precendence. In other words rule setting anonymoised shared 
-    would override an not anonmised rule... the implementation of would't be the much difficult 
-
-
-algorithm (to get the people to share with)
-
-
-
-
--make list of people for all rules    xs   
-    go through every rule in the policy
-        call the relationInterface to get R
-        go through R to check conditions
-            if pass
-                add to the rule list
-            else
-                nothing 
-            
-
--check if intersection between each two lists
-if x ^ y is non empty set
-    then  if rule x conditions is r1, and rule y conditions  is r2
-        therefore every element in  (x ^y) need to pass r1 and r2
-        otherwise remove the element from list of shared people
-
-
-flatten the list of people
-
-[a,b,c] [c,d,b] [b,e]
-[a,b][c,d][b,e]
-[a][c,d][e]=[a,c,d,e]
-
-
-'''
 
 
 def evaluatePolicies(policies):
@@ -728,7 +682,7 @@ def evaluatePolicies(policies):
 
 def detectConflict(results):
     res=CompareResults()
-    
+    neverList=set()
     for i in results:
          agg=set()
          s=i.share
@@ -737,8 +691,9 @@ def detectConflict(results):
              if(not (inters==set() or i.getAuthor().id==j.getAuthor().id)):
                 ##at least one conflict found
                  addConflictToResults(res,inters,i.policy,j.policy)
-             s=dif=s.difference(j.never)
-         res.addPpl(s)##bit naive tho I think
+                 neverList.update(inters)
+             dif=s.difference(neverList)
+         res.addPpl(dif)##bit naive tho I think
     return res
 
 
