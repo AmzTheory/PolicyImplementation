@@ -517,7 +517,7 @@ def evaluateRule(author,rule,filter):
 
 def getPplRule(rule,relation,args,filter):
     ppl=relationInterface(relation,args) ##add people to respect to the relation
-    conditions=json.loads(rule.condition)
+    conditions=json.loads(str(rule.condition))
 
     if(filter):
         return checkConditions(ppl,conditions)
@@ -526,10 +526,13 @@ def getPplRule(rule,relation,args,filter):
 
 
 def convertJsonToRules(js):
+    if(js==""):
+        return ""
     rules=list()
     rulesConverted=json.loads(js)
     for r in rulesConverted:
-        rules.append(Rule(condition=r.get("conditions"), relation=r.get("relation")))
+        cond = r.get("conditions") if r.get("conditions")!=None else []
+        rules.append(Rule(condition=cond, relation=r.get("relation"),type="share"))
 
     return rules
 
@@ -777,12 +780,29 @@ def generateRule(r):
     cond=convertToExp(json.loads(r.condition))
     return r.relation+":"+cond
 
-def generateRules(p,typeRule):
+def generateShareRules(rules):
     ret=""
-    
-    for r in p.rules:
-        if r.type==typeRule: 
+    for r in rules:
+        if(r.type=="share"):
             ret+="\t"+generateRule(r)+"\n"
+    return ret
+
+def generateNeverRules(rules):
+    ret=""
+    for r in rules:
+        if(r.type=="never"):
+            insteadRules=convertJsonToRules(r.instead)
+            if(insteadRules==""):
+                ret+="\t"+generateRule(r)+":\n"
+            else:
+                ret += "\t"+generateRule(r)+":["+generateInsteadRules(insteadRules)+"]\n"
+    return ret
+
+def generateInsteadRules(insteadRules):
+    ret=""
+    for r in insteadRules:
+       cond=convertToExp(r.condition)
+       return r.relation+":"+cond
     return ret
     
 
@@ -790,7 +810,7 @@ def generatePolicy(id):
     p=Policy.get_by_id(id)
 
     #construct share and never block
-    rules="\nshare\n"+generateRules(p,"share")+"never\n"+generateRules(p,"never")
+    rules="\nshare\n"+generateShareRules(p.rules)+"never\n"+generateNeverRules(p.rules)
 
     policy="author "+str(p.author.id)
     policy+="\nresources "+p.resources+"{"+rules+"}"
