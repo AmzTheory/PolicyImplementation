@@ -488,30 +488,32 @@ def isResourceIncluded(policy,res):#right now we're not considerring conjunction
                 return True #in which case the resource is is relevent to the policy
     return False
 
-def useShareRules(policy):
+def useShareRules(author,rules):
     share=[]
-    for r in policy.rules:
-        if(r.type=="share"):
-            arguments = getRelationArgs(policy.author.id, r)  # [relation,args]
-            rd=getPplRule(r,arguments[0],arguments[1],False)
-            share.append(rd) ##check conditions
+    for r in rules:
+        rd=evaluateRule(author,r,False)
+        share.append(rd) ##check conditions
     ##after going through all rules..check any overlaps
     ret= checkOverlapp(share)##pop an element which the first cause it the only one
     return ret
 
-def userNeverRules(policy):
+
+def userNeverRules(author, rules):
     never=set()
     instead=set()
-    for r in policy.rules:
-        if(r.type=="never"):
-            arguments=getRelationArgs(policy.author.id,r)   #[relation,args]
-            filtered=getPplRule(r,arguments[0],arguments[1],True)
-            # if(r.instead!="")
-            #     instead.update(useShareRules())
+    for r in rules:
+        filtered=evaluateRule(author,r,True)
+        if(r.instead!=""):
+            insteadRules = convertJsonToRules(r.instead)
+            for f in filtered:
+                instead.update(useShareRules(f.id, insteadRules))
             
-            never.update(filtered)   
-    return never
+        never.update(filtered)   
+    return [never,instead]
 
+def evaluateRule(author,rule,filter):
+     arguments = getRelationArgs(author, rule)  # [relation,args]
+     return getPplRule(rule,arguments[0],arguments[1],filter)
 
 def getPplRule(rule,relation,args,filter):
     ppl=relationInterface(relation,args) ##add people to respect to the relation
@@ -521,6 +523,15 @@ def getPplRule(rule,relation,args,filter):
         return checkConditions(ppl,conditions)
 
     return ShareComponents(ppl, conditions)
+
+
+def convertJsonToRules(js):
+    rules=list()
+    rulesConverted=json.loads(js)
+    for r in rulesConverted:
+        rules.append(Rule(condition=r.get("conditions"), relation=r.get("relation")))
+
+    return rules
 
 def getRelationArgs(pAuthorId,rule):
     funArgs = [pAuthorId]
@@ -533,6 +544,12 @@ def getRelationArgs(pAuthorId,rule):
         relation = rule.relation[:bracketInd]+"()"
     return [relation,funArgs]
 
+def getRules(policy,type):
+    rules=set()
+    for r in policy.rules:
+        if(r.type==type):
+            rules.add(r)
+    return rules   
 
 def removeElementsFromList(ls,rls):
     for r in rls:
@@ -692,9 +709,14 @@ flatten the list of people
 
 def evaluatePolicies(policies):
     results=[]
+    share,never,instead,performNever=set(),set(),set(),[]
     for p in policies:
-        share=useShareRules(p)
-        never=userNeverRules(p)
+        share=useShareRules(p.author.id,getRules(p,"share"))
+        performNever = userNeverRules(p.author.id, getRules(p, "never")) #[never,instead]
+        never=performNever[0]
+        instead=performNever[1]
+        share.update(instead)
+
         results.append(RuleResults(p,share,never))
     return results
         
