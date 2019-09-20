@@ -8,12 +8,12 @@ from datetime import date
 
 
 
-#add person
+
 def addIndividual(firstName,lastName,dob,dod,gender,familyID):
     individual=Individual(firstName=firstName,lastName=lastName,dob=dob,dod=dod,gender=gender,familyId=familyID)
     individual.save()
     return individual.id
-#init a root family
+
 def initFamily(paternal,maternal):
     family=Family(paternalFamily=paternal,maternalFamily=maternal,root=0)
     family.save()
@@ -24,24 +24,9 @@ def initRootFamily(paternal,maternal):
     family.save()
     return family.id
 
-#add child to family
-def linkChild(familyId,IndividualId):
-    child=Children(familyId=familyId,childId=IndividualId)
-    child.save()
-
-
-
-def addRelation(name):
-    relation=Relation(name=name)
-    relation.save()
-
-def addCondition(name):
-    condition=Condition(name=name)
-    condition.save()
-
 def addResource(name):
-    condition=Resource(name=name)
-    condition.save()
+    res=Resource(name=name)
+    Resource.save()
 
 
 
@@ -371,7 +356,7 @@ def nieces(*args):
 def twins(id):
     pass
 
-interface={
+relInterface={
         "siblings()":siblings,
         "maternalSiblings()":maternalSiblings,
         "paternalSiblings()":paternalSiblings,
@@ -400,7 +385,7 @@ interface={
 
     }    
 def relationInterface(relation,arguments):
-    f=interface.get(relation)
+    f=relInterface.get(relation)
 
     if(len(arguments)==1):
         return f(arguments[0])# f(id)
@@ -488,7 +473,7 @@ def isResourceIncluded(policy,res):#right now we're not considerring conjunction
                 return True #in which case the resource is is relevent to the policy
     return False
 
-def useShareRules(author,rules):
+def evaluateShareRules(author,rules):
     share=[]
     for r in rules:
         rd=evaluateRule(author,r,False)
@@ -498,7 +483,7 @@ def useShareRules(author,rules):
     return ret
 
 
-def userNeverRules(author, rules):
+def evaluateNeverRules(author, rules):
     never=set()
     instead=set()
     for r in rules:
@@ -506,7 +491,7 @@ def userNeverRules(author, rules):
         if(r.instead!=[]):
             insteadRules = convertJsonToRules(r.instead)
             for f in filtered:
-                instead.update(useShareRules(f.id, insteadRules))
+                instead.update(evaluateShareRules(f.id, insteadRules))
             
         never.update(filtered)   
     return [never,instead]
@@ -668,8 +653,8 @@ def evaluatePolicies(policies):
     results=[]
     share,never,instead,performNever=set(),set(),set(),[]
     for p in policies:
-        share=useShareRules(p.author.id,getRules(p,"share"))
-        performNever = userNeverRules(p.author.id, getRules(p, "never")) #[never,instead]
+        share=evaluateShareRules(p.author.id,getRules(p,"share"))
+        performNever = evaluateNeverRules(p.author.id, getRules(p, "never")) #[never,instead]
         never=performNever[0]
         instead=performNever[1]
         share.update(instead)
@@ -681,19 +666,17 @@ def evaluatePolicies(policies):
 
 
 def detectConflict(results):
-    res=CompareResults()
-    neverList=set()
+    res=AnalyseResults()
     for i in results:
-         agg=set()
          s=i.share
+         shareWith=i.share
          for j in results:
              inters=s.intersection(j.never)
-             if(not (inters==set() or i.getAuthor().id==j.getAuthor().id)):
+             if(not (inters==set())):     ##or i.getAuthor().id==j.getAuthor().id)):
                 ##at least one conflict found
                  addConflictToResults(res,inters,i.policy,j.policy)
-                 neverList.update(inters)
-             dif=s.difference(neverList)
-         res.addPpl(dif)##bit naive tho I think
+             shareWith = shareWith.difference(inters)
+         res.addPpl(shareWith)##bit naive tho I think
     return res
 
 
@@ -701,7 +684,7 @@ def detectConflict(results):
 def addConflictToResults(res,ppl,p1,p2):
          res.addConflict(p1,p2,ppl)
 
-def compare(resource):
+def analyse(resource):
 # algorithm used for compare function
 # -fetch all relevent policies based on the queried resource
     policies=findReleventPolicies(resource)

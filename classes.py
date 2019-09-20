@@ -1,22 +1,17 @@
 from peewee import *
 from playhouse.migrate import *
 
-#implementation needed
-# add people
-# add resources/conditions/relations
-#Download dateset that would be usefull for testing
-# add policies(which include rules)
-#-> when policies created a policy language file need to be generated (used for reasoning later)
-# evaluate policies for a list of resource (Compare function)
 
 
 db=SqliteDatabase('database.db')
 
+##ORM used is peewee .. Simple orm with sqlite database   
+##checkout http://docs.peewee-orm.com/en/latest/ for the docs
+
+
 class BaseModel(Model):
     class Meta:
         database=db
-
-
 
 
 class Family(BaseModel):
@@ -36,12 +31,6 @@ class Individual(BaseModel):
      gender = CharField()
      familyId = ForeignKeyField(Family, backref='children')
 
-
-
-
-class Children(BaseModel):
-     familyId=ForeignKeyField(Family,backref="Fam")
-     childID=ForeignKeyField(Individual,backref="Children")
 
 
 class Relationship(BaseModel):
@@ -64,9 +53,6 @@ class Resource(BaseModel):
 class Relation(BaseModel):
        id=AutoField()
        name=TextField()
-
-
-
 
 
 
@@ -95,23 +81,6 @@ def performMigration():
 
 
 
-#surplus the need for now as resutl of introducing JSON
-class Condition(BaseModel):
-       id=AutoField()
-       name=TextField()
-
-class RelationToRule(BaseModel):
-       ruleId=ForeignKeyField(Rule,backref="relations")
-       relationId=ForeignKeyField(Relation,)
-
-
-class RuleDetails(BaseModel):
-       ruleId = ForeignKeyField(Rule, backref="conditions")
-       condition=TextField() #json
-
-class Instead(BaseModel):
-       ruleId=ForeignKeyField(Rule,backref="relations")
-       relationId=ForeignKeyField(Relation,backref="rules")
 
 
 class SharedPeople():
@@ -153,7 +122,7 @@ class Conflict():
               return str(ret)
        def printInstance(self):
               return "Between "+self.p1.author.firstName+" and "+self.p2.author.firstName+" regarding "+self.getIndividialNames()+"  (check policies "+str(self.p1.id)+" and "+str(self.p2.id)+" to find out why)"
-class CompareResults():
+class AnalyseResults():
        def __init__(self):
               self.ppl=set()
               self.conflicts=[]
@@ -175,6 +144,10 @@ class CompareResults():
               for c in self.conflicts:
                      ret+="\n"+c.printInstance()
               return ret
+
+
+
+##used to access DB to create tables
 class Access:
        def connect():
               db.connect()
