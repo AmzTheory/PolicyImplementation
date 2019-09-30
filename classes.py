@@ -83,11 +83,13 @@ def performMigration():
 
 
 
-class SharedPeople():
-    def __init__(self,individual,anon):
-        self.individual=individual
-        self.anon=anon
+# class SharedPeople():
+#     def __init__(self,individual,anon):
+#         self.individual=individual
+#         self.anon=anon
 
+
+## instance of this below class represent 
 class ShareComponents:
     def printAll(listOfResult):
            for i in listOfResult:

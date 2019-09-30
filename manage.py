@@ -7,7 +7,18 @@ import inspect
 from datetime import date
 
 
+##in the files we find the implementation for the analyse and generate policies
 
+
+
+
+
+#the below functions to insert family, indivudal, policy and resource
+##but it worth to note those were not used over coding implementation and mostly
+##the data was inserted manually into the database
+
+
+##  you can find the data type of the atrributed in classes.py
 
 def addIndividual(firstName,lastName,dob,dod,gender,familyID):
     individual=Individual(firstName=firstName,lastName=lastName,dob=dob,dod=dod,gender=gender,familyId=familyID)
@@ -47,9 +58,16 @@ def addRuleWithInstead(type, anon,condition,relation,policy,instead):
 
 
 
+'''
+the following function are used to lookup the list of people with relative relation (function name)
 
-#reterive relatives
+functions who have *args, is length  eith have length 1 or 2
+in case of 1  ->they  would include just [id] 
+in case of 2  -> the  would inlcude the [id,name]  name is would be used when certain person  within relation (specific person) 
 
+function with just id  -> id is used to find relatives in respect to the user with passed id
+    usedthey dont offer the selecting certain person (those can be extended to allow selecting specific person)
+'''
 
 def siblings(*args):##id is and individual not just number... so adjust how all relation function is written to speed up the process
     id=args[0]
@@ -349,12 +367,17 @@ def nieces(*args):
     for c in fam.children:
         if(c.id != id):
             nieces.update(daughters(c.id))
-    ##maternal niece
-    ##paternal niece
+    
+    ##maternal niece  (extenstion)
+    ##paternal niece  (extenstion)
     
     return nieces
 def twins(id):
     pass
+
+
+
+#    The following is mappiing of relation to functions
 
 relInterface={
         "siblings()":siblings,
@@ -383,7 +406,15 @@ relInterface={
         "nieces()":nieces,
         "twins()":twins
 
-    }    
+    }  
+
+
+'''
+This function would returnt he list of people individals based on arguments passed
+
+relation-> relation name  
+arguments -> the user id and in some case a name might be as well passed
+'''
 def relationInterface(relation,arguments):
     f=relInterface.get(relation)
 
@@ -394,7 +425,12 @@ def relationInterface(relation,arguments):
 
   
 
-##helper(auxiliary) functions for fetching relations
+#(auxiliary) functions  used in relation functions
+
+
+
+##return list of two elements with individual instance and individual's Family instance 
+## id -> the individual id
 def getIndividualInfo(id):
         # try:
             ind=Individual.get_by_id(id)
@@ -404,52 +440,62 @@ def getIndividualInfo(id):
         #     return [ind,None]
 
 
+#return individial instance based on the id passed
 def getIndividual(id):
     return Individual.get_by_id(id)
 
+
+#return family instances where an individual is a parent 
 def getFamiliesForIndividual(id):
     return Family.select().where((Family.paternal==id) | (Family.maternal==id))
 
 
+
+##return the family instance of individal's MAM
 def getMaternalFamily(id,fam):
     if (fam.maternalFamily!=None):
         return Family.get(Family.id==fam.maternalFamily.id)
 
     return None
-
+##return the Famil instanace of individal's DAD
 def getPaternalFamily(id,fam):
     if (fam.paternalFamily!=None):
         return Family.get(Family.id==fam.paternalFamily.id)
     
     return None
 
-def getChildren(f):
-    pass
 
-def returnOnlyGender(list,g,dontPrint):  #list of individuals
-    s=set()
-    for c in list:
-        if(c.gender==g and c!=dontPrint):##if c is NONE this would produce a bug
-            s.add(c)
-    return s
+# ##return the list 
+# def returnOnlyGender(list,g,dontPrint):  #list of individuals
+#     s=set()
+#     for c in list:
+#         if(c.gender==g and c!=dontPrint):##if c is NONE this would produce a bug
+#             s.add(c)
+#     return s
 
 
+## return a set of people based on arguments passed  , the function is called most of the relatoin functions
+## select-> type of peewee.select that can be iterted through
+## args ->is the same args passed to relation functions, hence the lenth could be 1 0r 2
+## f    -> contains the function the would in every individual with select.. It could be check on gender or id  (to get better idea ,look at iterator calls)
 def iterator(select, args, f):
+    
     returnSet = set()
     for i in select:
          if(len(args) == 2):
-            if(i.firstName == args[1] and f(i)):
-                returnSet.add(i)  # what about if the author included his name
+            if(i.firstName == args[1] and f(i)):   ## when looking for a specific person
+                returnSet.add(i)
          elif(f(i)):
              returnSet.add(i)
     return returnSet
 
 
 
-#below function are concering comapre function
+#below function are concering analyse function
 
 
-
+#return the list of policies that are attached to resource id passed
+#res-> resource id
 def findReleventPolicies(res):
     policies=[]
     for p in Policy.select():
@@ -462,27 +508,35 @@ def findReleventPolicies(res):
 
 
 
-##helper(auxiliary) functions for fetching compare
-def isResourceIncluded(policy,res):#right now we're not considerring conjunction and disjunction of resource
+## this function would check if a resource is in a policy's resource
+## policy -> its the policy that we are looking into its resources  (not Policy resource is in json and need to be converted to an python array)
+## res ->  id of the resource where search if its exist in the policy resources  
+def isResourceIncluded(policy,res):
     arrayRes=json.loads(policy.resources)
     for elem  in arrayRes:
         if isinstance(elem,list):
             pass
-        elif isinstance(elem,int):#need to b change to in the future
+        elif isinstance(elem,int):
             if(res==elem):
                 return True #in which case the resource is is relevent to the policy
     return False
 
+
+##this function would take all share rules and evaluate then by return the a list of people
+## author ->policy author's id 
+## rules  -> the list of rules
 def evaluateShareRules(author,rules):
     share=[]
     for r in rules:
         rd=evaluateRule(author,r,False)
         share.append(rd) ##check conditions
     ##after going through all rules..check any overlaps
-    ret= checkOverlapp(share)##pop an element which the first cause it the only one
+    ret= checkOverlap(share)##pop an element which the first cause it the only one
     return ret
 
-
+##this function would take all never rules and evaluate then by return the a list of people
+## author ->policy author's id 
+## rules  -> the list of rules
 def evaluateNeverRules(author, rules):
     never=set()
     instead=set()
@@ -496,10 +550,16 @@ def evaluateNeverRules(author, rules):
         never.update(filtered)   
     return [never,instead]
 
+##this function would evaluate people a single rules yeild considering the rules relation and conditoins
+##return an instance
+## author ->policy author's id 
+## rule  -> rules to be evaluated
 def evaluateRule(author,rule,filter):
      arguments = getRelationArgs(author, rule)  # [relation,args]
      return getPplRule(rule,arguments[0],arguments[1],filter)
 
+
+## The following is an axuilariy function  for evaluate rule that call  relation function and then filter them based on conditions
 def getPplRule(rule,relation,args,filter):
     ppl=relationInterface(relation,args) ##add people to respect to the relation
     conditions=json.loads(str(rule.condition))
@@ -509,7 +569,7 @@ def getPplRule(rule,relation,args,filter):
 
     return ShareComponents(ppl, conditions)
 
-
+##convert rules in json to rule instances  (used for instead part)
 def convertJsonToRules(js):
     if(js==""):
         return ""
@@ -521,17 +581,24 @@ def convertJsonToRules(js):
 
     return rules
 
+##this function used in evaluate rule that return list of two element the define a relation with arguments
+## this return of this function would get passed to the relationinterface
+
 def getRelationArgs(pAuthorId,rule):
     funArgs = [pAuthorId]
     relation=rule.relation
     bracketInd=rule.relation.index("(")
     args=rule.relation[bracketInd+1:-1]
-    if(args!=""):
+    if(args!=""):##in case name is included , add the name to the args
         splitArgs=args.split(",")
         funArgs.extend(splitArgs)
         relation = rule.relation[:bracketInd]+"()"
     return [relation,funArgs]
 
+
+##get all rules of certain typen (share/never)
+##policy -> instance of the policy
+##type   -> the type wanted
 def getRules(policy,type):
     rules=set()
     for r in policy.rules:
@@ -539,17 +606,18 @@ def getRules(policy,type):
             rules.add(r)
     return rules   
 
-def removeElementsFromList(ls,rls):
-    for r in rls:
-        for l in ls:
-            if(l.id==r.id):
-                ls.remove(r)
-                break
+# def removeElementsFromList(ls,rls):
+#     for r in rls:
+#         for l in ls:
+#             if(l.id==r.id):
+#                 ls.remove(r)
+#                 break
 
 
                     
+##This function is used within evaluateShare rules, and its purpose is to make sure there is no overlap  between all share rules
 
-def checkOverlapp(results):
+def checkOverlap(results):
     allRemove=set()
     if(len(results)==0):
         return set()#empty set
@@ -557,8 +625,7 @@ def checkOverlapp(results):
         return results[0].ppl
     else:
         for i in range(1,len(results)):
-            # print(results[0].ppl,results[i].ppl)
-            #print("compare",results[0].ppl,results[i].ppl)
+            
             common=(results[0].ppl).intersection(results[i].ppl)
         
             # for c in common:
@@ -576,7 +643,7 @@ def checkOverlapp(results):
 
 
         results[0].ppl=results[0].ppl.difference(allRemove)
-        others=checkOverlapp(results[1:])
+        others=checkOverlap(results[1:])
         ret=(results[0].ppl).union(others)
 
         return ret
